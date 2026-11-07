@@ -1,0 +1,76 @@
+{
+  "_comment": "Herramientas HTTP para los agentes de Mirlo (WhatsApp y voz). Base URL: https://TU-DOMINIO. Header en todas: X-API-Key: <AGENT_API_KEY>.",
+  "tools": [
+    {
+      "name": "consultar_disponibilidad",
+      "description": "Busca horarios con lugares libres en los 4 centros de buceo. Úsala antes de ofrecer cualquier fecha. Si el centro pedido está lleno, ofrece otros centros u horarios de la respuesta.",
+      "method": "GET",
+      "path": "/tools/availability",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "date_from": {"type": "string", "format": "date", "description": "Fecha inicial AAAA-MM-DD"},
+          "date_to": {"type": "string", "format": "date", "description": "Fecha final AAAA-MM-DD (opcional, por defecto igual a date_from)"},
+          "seats": {"type": "integer", "minimum": 1, "description": "Número de personas"},
+          "center_id": {"type": "string", "enum": ["cancun", "playa", "cozumel", "tulum"], "description": "Centro preferido (opcional)"},
+          "kind": {"type": "string", "description": "Tipo de tour: bautizo, arrecife, cenote, curso (opcional)"}
+        },
+        "required": ["date_from", "seats"]
+      }
+    },
+    {
+      "name": "apartar_lugares",
+      "description": "Aparta los lugares por 10 minutos mientras se piden los datos del cliente. Llámala en cuanto el cliente elija un horario.",
+      "method": "POST",
+      "path": "/tools/holds",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "slot_id": {"type": "string"},
+          "seats": {"type": "integer", "minimum": 1},
+          "customer_phone": {"type": "string", "description": "Teléfono en formato E.164, p.ej. +5215512345678"},
+          "channel": {"type": "string", "enum": ["whatsapp", "voice"]}
+        },
+        "required": ["slot_id", "seats", "customer_phone", "channel"]
+      }
+    },
+    {
+      "name": "crear_reserva",
+      "description": "Cierra la venta: registra la reserva en TRYTN y devuelve payment_url. Envía ese link al cliente (por WhatsApp; en llamada, por SMS/WhatsApp al número del cliente). Manda el header Idempotency-Key con el id de la conversación.",
+      "method": "POST",
+      "path": "/tools/bookings",
+      "headers": {"Idempotency-Key": "{{conversation_id}}"},
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "hold_id": {"type": "string"},
+          "customer_name": {"type": "string"},
+          "customer_phone": {"type": "string"},
+          "customer_email": {"type": "string"}
+        },
+        "required": ["hold_id", "customer_name", "customer_phone"]
+      }
+    },
+    {
+      "name": "estado_reserva",
+      "description": "Consulta si una reserva ya fue pagada (status: pending_payment, confirmed, cancelled, expired).",
+      "method": "GET",
+      "path": "/tools/bookings/{booking_id}",
+      "parameters": {"type": "object", "properties": {"booking_id": {"type": "string"}}, "required": ["booking_id"]}
+    },
+    {
+      "name": "cancelar_reserva",
+      "description": "Cancela una reserva que aún no se ha pagado. Si ya está pagada, la respuesta pide pasar el caso a un asesor.",
+      "method": "POST",
+      "path": "/tools/bookings/{booking_id}/cancel",
+      "parameters": {"type": "object", "properties": {"booking_id": {"type": "string"}}, "required": ["booking_id"]}
+    },
+    {
+      "name": "liberar_apartado",
+      "description": "Libera un apartado si el cliente cambia de opinión antes de reservar.",
+      "method": "DELETE",
+      "path": "/tools/holds/{hold_id}",
+      "parameters": {"type": "object", "properties": {"hold_id": {"type": "string"}}, "required": ["hold_id"]}
+    }
+  ]
+}
